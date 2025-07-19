@@ -61,6 +61,30 @@ export const chapters = pgTable("chapters", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Interactive lessons within chapters
+export const lessons = pgTable("lessons", {
+  id: serial("id").primaryKey(),
+  chapterId: integer("chapter_id").references(() => chapters.id),
+  title: varchar("title").notNull(),
+  type: varchar("type").notNull(), // theory, code_exercise, quiz, fill_blank, drag_drop
+  content: jsonb("content").notNull(), // lesson structure and data
+  orderIndex: integer("order_index").notNull(),
+  xpReward: integer("xp_reward").default(10),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User progress on individual lessons
+export const userLessonProgress = pgTable("user_lesson_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id),
+  lessonId: integer("lesson_id").references(() => lessons.id),
+  completed: boolean("completed").default(false),
+  attempts: integer("attempts").default(0),
+  lastAttemptCode: text("last_attempt_code"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const userProgress = pgTable("user_progress", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").references(() => users.id),
@@ -73,11 +97,14 @@ export const userProgress = pgTable("user_progress", {
 
 export const quizzes = pgTable("quizzes", {
   id: serial("id").primaryKey(),
-  chapterId: integer("chapter_id").references(() => chapters.id),
+  lessonId: integer("lesson_id").references(() => lessons.id),
+  questionType: varchar("question_type").notNull(), // multiple_choice, code_completion, syntax_check, semantic_understanding
   question: text("question").notNull(),
-  options: jsonb("options").notNull(), // array of options
-  correctAnswer: integer("correct_answer").notNull(),
+  codeSnippet: text("code_snippet"), // for code-based questions
+  options: jsonb("options"), // array of options for multiple choice
+  correctAnswer: text("correct_answer").notNull(),
   explanation: text("explanation"),
+  hints: jsonb("hints"), // array of progressive hints
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -118,6 +145,16 @@ export const insertUserProgressSchema = createInsertSchema(userProgress).omit({
   createdAt: true,
 });
 
+export const insertLessonSchema = createInsertSchema(lessons).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserLessonProgressSchema = createInsertSchema(userLessonProgress).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertQuizSchema = createInsertSchema(quizzes).omit({
   id: true,
   createdAt: true,
@@ -138,6 +175,10 @@ export type InsertCourse = z.infer<typeof insertCourseSchema>;
 export type Course = typeof courses.$inferSelect;
 export type InsertChapter = z.infer<typeof insertChapterSchema>;
 export type Chapter = typeof chapters.$inferSelect;
+export type InsertLesson = z.infer<typeof insertLessonSchema>;
+export type Lesson = typeof lessons.$inferSelect;
+export type InsertUserLessonProgress = z.infer<typeof insertUserLessonProgressSchema>;
+export type UserLessonProgress = typeof userLessonProgress.$inferSelect;
 export type InsertUserProgress = z.infer<typeof insertUserProgressSchema>;
 export type UserProgress = typeof userProgress.$inferSelect;
 export type InsertQuiz = z.infer<typeof insertQuizSchema>;

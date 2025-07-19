@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import PythonCourse from "@/pages/PythonCourse";
+import PythonLessons from "@/pages/PythonLessons";
 import JobInsights from "@/pages/JobInsights";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/course/python" component={PythonCourse} />
+          <Route path="/course/python/lessons" component={PythonLessons} />
           <Route path="/job-insights" component={JobInsights} />
         </>
       )}

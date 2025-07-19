@@ -2,6 +2,8 @@ import {
   users,
   courses,
   chapters,
+  lessons,
+  userLessonProgress,
   userProgress,
   quizzes,
   userQuizAttempts,
@@ -12,6 +14,10 @@ import {
   type InsertCourse,
   type Chapter,
   type InsertChapter,
+  type Lesson,
+  type InsertLesson,
+  type UserLessonProgress,
+  type InsertUserLessonProgress,
   type UserProgress,
   type InsertUserProgress,
   type Quiz,
@@ -46,8 +52,17 @@ export interface IStorage {
   getUserProgress(userId: string, courseId?: number): Promise<UserProgress[]>;
   updateProgress(progress: InsertUserProgress): Promise<UserProgress>;
   
+  // Lesson operations
+  getLessonsByChapter(chapterId: number): Promise<Lesson[]>;
+  getLesson(id: number): Promise<Lesson | undefined>;
+  createLesson(lesson: InsertLesson): Promise<Lesson>;
+  
+  // User lesson progress operations
+  getUserLessonProgress(userId: string, lessonId?: number): Promise<UserLessonProgress[]>;
+  updateLessonProgress(progress: InsertUserLessonProgress): Promise<UserLessonProgress>;
+  
   // Quiz operations
-  getQuizzesByChapter(chapterId: number): Promise<Quiz[]>;
+  getQuizzesByLesson(lessonId: number): Promise<Quiz[]>;
   getQuiz(id: number): Promise<Quiz | undefined>;
   createQuiz(quiz: InsertQuiz): Promise<Quiz>;
   
@@ -165,9 +180,70 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Lesson operations
+  async getLessonsByChapter(chapterId: number): Promise<Lesson[]> {
+    return await db
+      .select()
+      .from(lessons)
+      .where(eq(lessons.chapterId, chapterId))
+      .orderBy(lessons.orderIndex);
+  }
+
+  async getLesson(id: number): Promise<Lesson | undefined> {
+    const [lesson] = await db.select().from(lessons).where(eq(lessons.id, id));
+    return lesson;
+  }
+
+  async createLesson(lesson: InsertLesson): Promise<Lesson> {
+    const [newLesson] = await db.insert(lessons).values(lesson).returning();
+    return newLesson;
+  }
+
+  // User lesson progress operations
+  async getUserLessonProgress(userId: string, lessonId?: number): Promise<UserLessonProgress[]> {
+    if (lessonId) {
+      return await db
+        .select()
+        .from(userLessonProgress)
+        .where(and(eq(userLessonProgress.userId, userId), eq(userLessonProgress.lessonId, lessonId)));
+    }
+    
+    return await db
+      .select()
+      .from(userLessonProgress)
+      .where(eq(userLessonProgress.userId, userId));
+  }
+
+  async updateLessonProgress(progress: InsertUserLessonProgress): Promise<UserLessonProgress> {
+    const [existingProgress] = await db
+      .select()
+      .from(userLessonProgress)
+      .where(
+        and(
+          eq(userLessonProgress.userId, progress.userId!),
+          eq(userLessonProgress.lessonId, progress.lessonId!)
+        )
+      );
+
+    if (existingProgress) {
+      const [updatedProgress] = await db
+        .update(userLessonProgress)
+        .set({ ...progress, completedAt: progress.completed ? new Date() : null })
+        .where(eq(userLessonProgress.id, existingProgress.id))
+        .returning();
+      return updatedProgress;
+    } else {
+      const [newProgress] = await db
+        .insert(userLessonProgress)
+        .values({ ...progress, completedAt: progress.completed ? new Date() : null })
+        .returning();
+      return newProgress;
+    }
+  }
+
   // Quiz operations
-  async getQuizzesByChapter(chapterId: number): Promise<Quiz[]> {
-    return await db.select().from(quizzes).where(eq(quizzes.chapterId, chapterId));
+  async getQuizzesByLesson(lessonId: number): Promise<Quiz[]> {
+    return await db.select().from(quizzes).where(eq(quizzes.lessonId, lessonId));
   }
 
   async getQuiz(id: number): Promise<Quiz | undefined> {

@@ -81,7 +81,7 @@ export default function Dashboard() {
       completedSkills: ['Python ✓', 'JavaScript ✓'],
       currentSkill: 'Java',
       totalSkills: 10,
-      link: '/course/python'
+      link: '/course/python/lessons'
     },
     {
       id: 'devops',
